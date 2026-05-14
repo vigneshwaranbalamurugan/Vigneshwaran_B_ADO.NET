@@ -2,90 +2,82 @@
 
 ## Overview
 
-- Multi-layered C# console application for managing users and sending notifications
-- Supports email and SMS notification types
-- Input validation and exception handling throughout the application
-# Notification Application
-
-A layered C# console application for user management and notification delivery (SMS and Email), backed by PostgreSQL.
+- Manage users and notifications from a console UI
+- Support email and SMS notification workflows
+- Validate input in the FE layer before persisting data
+- Use EF Core repositories over a PostgreSQL database
 
 ## Tech Stack
 
-- .NET 10 console application
+- .NET 10
+- Entity Framework Core 8
 - PostgreSQL
-- Npgsql
-- Layered architecture (FE, BAL, DAL, Model)
+- Npgsql EF Core provider
+- Layered architecture: FE, BAL, DAL, Model
 
 ## Solution Structure
 
 - NotificationApp.FEApplication
-  - Console menus and input flow
-  - Validation classes for name, email, mobile number, and message
+  - Console menus and application flow
+  - Validators for name, email, mobile number, and message
 - NotificationApp.BALLibrary
   - Business services for users and notifications
-  - Notification sender strategy implementations (SMS and Email)
+  - Notification sender logic
 - NotificationApp.DALLibrary
-  - Repository implementations using SQL queries and Npgsql
-  - Database connection wrapper
+  - EF Core `DbContext`
+  - Repository implementations for users and notifications
+  - PostgreSQL configuration and entity mapping
 - NotificationApp.ModelLibrary
-  - Domain models and custom validation exceptions
+  - Domain models
+  - Notification inheritance model
+  - Custom validation exceptions
 
 ## Current Features
 
 ### User Features
 
-- Create a user (name, email, mobile number)
+- Create a user
 - Get user details by mobile number
 - Update user details by mobile number
 - Delete user by mobile number
 
 ### Notification Features
 
-- Send SMS notification to an existing user (by mobile number)
-- Send Email notification to an existing user (by email)
+- Send SMS notification to an existing user
+- Send email notification to an existing user
 - Get all notifications
 - Get SMS notifications only
-- Get Email notifications only
+- Get email notifications only
 
-Note: If a recipient user is not found, notification creation is skipped with a message to create the user first.
+If a matching user is not found, notification creation is skipped and the application prompts to create the user first.
 
-## Menus
+## Data Access
 
-### Main Menu
+- EF Core is used for all CRUD operations in the DAL
+- `NotificationAppContext` configures the PostgreSQL connection
+- `User` and `Notification` entities are mapped with Fluent API
+- `EmailNotification` and `SMSNotification` are modeled as derived notification types
+- `NotificationType` is used as the discriminator for the hierarchy
 
-1. User Menu
-2. Notification Menu
-3. Exit
+## Domain Models
 
-### User Menu
-
-1. Get User Details
-2. Create User
-3. Update User Details
-4. Delete User
-5. Back
-
-### Notification Menu
-
-1. Send Notification
-2. Get All Notifications
-3. Get SMS Notifications
-4. Get Email Notifications
-5. Back
-
-## LINQ Usage
-
-The notification filtering feature uses LINQ in FE layer:
-
-- Where to filter by notification type (SMS or Email)
-- OrderByDescending to show recent notifications first
-- ToList to materialize filtered results
+- User
+  - UserId, UserName, MobileNumber, EmailId, Notifications
+- Notification
+  - Id, Message, UsertoNotify, SentDate, NotificationType, User
+- EmailNotification
+  - Inherits `Notification`
+- SMSNotification
+  - Inherits `Notification`
+- NotiType enum
+  - EmailNotification = 1
+  - SMSNotification = 2
 
 ## Validation Rules
 
 - Email
   - Cannot be empty
-  - Must match a valid email format
+  - Must be valid email format
 - Mobile number
   - Cannot be empty
   - Must contain only digits
@@ -96,40 +88,14 @@ The notification filtering feature uses LINQ in FE layer:
   - Minimum length is 3
 - Message
   - Cannot be empty or whitespace
-  - Length must be between 5 and 160 characters
-
-## Data Access and Persistence
-
-- Uses PostgreSQL tables:
-  - users
-  - notifications
-- Notification read queries join notifications with users to include recipient contact details.
-- Repository pattern is used for CRUD operations.
-
-## Domain Models
-
-- User
-  - UserId, UserName, MobileNumber, EmailId
-- Notification
-  - Id, Message, UsertoNotify, SentDate, NotificationType
-- EmailNotification (inherits Notification)
-- SMSNotification (inherits Notification)
-- NotiType enum
-  - EmailNotification = 1
-  - SMSNotification = 2
-
-## Exception Types
-
-- InvalidEmailIdException
-- InvalidMobileNumberException (class name)
-- InvalidNameException
-- MessageException
+  - Must be between 5 and 160 characters
 
 ## Run Instructions
 
-From solution root:
+From the solution root:
 
 1. Restore and build
-   - dotnet build NotificationApp.sln
-2. Run FE app
-   - dotnet run --project NotificationApp.FEApplication
+   - `dotnet build NotificationApp.sln`
+2. Run the console app
+   - `dotnet run --project NotificationApp.FEApplication`
+
