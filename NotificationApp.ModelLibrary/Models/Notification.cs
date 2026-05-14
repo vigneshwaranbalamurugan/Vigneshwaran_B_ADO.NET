@@ -4,13 +4,18 @@ namespace NotificationApp.ModelLibrary.Models{
     }
 
     // Base Notification Class
-    public  class Notification{
+    public abstract class Notification{
 
         public int Id{get;set;}
         public string Message{set;get;}=string.Empty;
+
+        //Foreign key
         public int UsertoNotify{set;get;}
         public DateTime SentDate{get;set;}
         public NotiType NotificationType{set;get;}
+
+        // Navigation Property
+        public User? User {get;set;}
 
         public Notification(){
         }

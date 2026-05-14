@@ -1,157 +1,101 @@
 using System;
 using NotificationApp.ModelLibrary.Models;
 using NotificationApp.DALLibrary.Context;
-using NotificationApp.DALLibrary.Queries;
-using Npgsql;
+using Microsoft.EntityFrameworkCore;
 
 namespace NotificationApp.DALLibrary.Repositories
 {
     public class NotificationRepository : AbstractRepository<int, Notification>
     {
-        public NotificationRepository(DbConnection connection) : base(connection)
+        public NotificationRepository(NotificationAppContext context) : base(context)
         {
         }
 
-        public override Notification Create(Notification item)
+        public override Notification? Create(Notification item)
         {
-            NpgsqlCommand command = new NpgsqlCommand(NotificationQueries.InsertNotificationQuery, _connection);
-            command.Parameters.AddWithValue("@userId", item.UsertoNotify);
-            command.Parameters.AddWithValue("@message", item.Message);
-            command.Parameters.AddWithValue("@sentDate", item.SentDate == default ? DateTime.UtcNow : item.SentDate);
-            command.Parameters.AddWithValue("@notificationType", (int)item.NotificationType);
             try
             {
-                _connection.Open();
-                object? result = command.ExecuteScalar();
-                if (result != null)
+                if (item.SentDate == default)
                 {
-                    item.Id = Convert.ToInt32(result);
+                    item.SentDate = DateTime.UtcNow;
                 }
+                _context.notifications.Add(item);
+                _context.SaveChanges();
                 return item;
-            }catch (Exception ex)
+            }
+            catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
                 return null;
-            }
-            finally
-            {
-                _connection?.Close();
             }
         }
 
         public override List<Notification>? GetAll()
         {
-            NpgsqlCommand command = new NpgsqlCommand(NotificationQueries.GetAllNotificationsQuery, _connection);
-            List<Notification> notifications = new List<Notification>();
             try
             {
-                _connection.Open();
-                NpgsqlDataReader reader = command.ExecuteReader();
-                while (reader.Read())
-                {
-                    var n = new Notification();
-                    n.Id = Convert.ToInt32(reader[0]);
-                    n.UsertoNotify = Convert.ToInt32(reader[1]);
-                    var rawMessage = reader[2].ToString()!;
-                    n.SentDate = Convert.ToDateTime(reader[3]);
-                    n.NotificationType = (NotiType)Convert.ToInt32(reader[4]);
-                    var email = reader.IsDBNull(5) ? string.Empty : reader[5].ToString()!;
-                    var mobile = reader.IsDBNull(6) ? string.Empty : reader[6].ToString()!;
-                    var contact = n.NotificationType == NotiType.EmailNotification ? email : mobile;
-                    // Keep model unchanged — embed contact for display in Message
-                    n.Message = $"{rawMessage}, (User to Notify: {contact})";
-                    notifications.Add(n);
-                }
-                return notifications;
-            }catch (Exception ex)
+                return _context.notifications
+                    .Include(n => n.User)
+                    .ToList();
+            }
+            catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
                 return null;
-            }
-            finally
-            {
-                _connection?.Close();
             }
         }
 
         public override Notification? Get(int key)
         {
-            NpgsqlCommand command = new NpgsqlCommand(NotificationQueries.GetNotificationByIdQuery, _connection);
-            command.Parameters.AddWithValue("@key", key);
             try
             {
-                _connection.Open();
-                NpgsqlDataReader reader = command.ExecuteReader();
-                if (reader.Read())
-                {
-                    var n = new Notification();
-                    n.Id = Convert.ToInt32(reader[0]);
-                    n.UsertoNotify = Convert.ToInt32(reader[1]);
-                    var rawMessage = reader[2].ToString()!;
-                    n.SentDate = Convert.ToDateTime(reader[3]);
-                    n.NotificationType = (NotiType)Convert.ToInt32(reader[4]);
-                    var email = reader.IsDBNull(5) ? string.Empty : reader[5].ToString()!;
-                    var mobile = reader.IsDBNull(6) ? string.Empty : reader[6].ToString()!;
-                    var contact = n.NotificationType == NotiType.EmailNotification ? email : mobile;
-                    n.Message = $"{rawMessage}, (User to Notify: {contact})";
-                    return n;
-                }
+                return _context.notifications
+                    .Include(n => n.User)
+                    .FirstOrDefault(n => n.Id == key);
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
                 return null;
             }
-            finally
-            {
-                _connection?.Close();
-            }
-            return null;
         }
 
         public override Notification? Update(int key, Notification item)
         {
-            NpgsqlCommand command = new NpgsqlCommand(NotificationQueries.UpdateNotificationQuery, _connection);
-            command.Parameters.AddWithValue("@key", key);
-            command.Parameters.AddWithValue("@userId", item.UsertoNotify);
-            command.Parameters.AddWithValue("@message", item.Message);
-            command.Parameters.AddWithValue("@sentDate", item.SentDate == default ? DateTime.UtcNow : item.SentDate);
-            command.Parameters.AddWithValue("@notificationType", (int)item.NotificationType);
             try
             {
-                _connection.Open();
-                int rows = command.ExecuteNonQuery();
-                if (rows > 0)
+                var existingNotification = _context.notifications.FirstOrDefault(n => n.Id == key);
+                if (existingNotification == null)
                 {
-                    item.Id = key;
-                    return item;
+                    return null;
                 }
-                return null;
+
+                existingNotification.UsertoNotify = item.UsertoNotify;
+                existingNotification.Message = item.Message;
+                existingNotification.SentDate = item.SentDate == default ? DateTime.UtcNow : item.SentDate;
+                existingNotification.NotificationType = item.NotificationType;
+
+                _context.notifications.Update(existingNotification);
+                _context.SaveChanges();
+                return existingNotification;
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
                 return null;
-            }
-            finally
-            {
-                _connection?.Close();
             }
         }
 
         public override Notification? Delete(int key)
         {
-            NpgsqlCommand command = new NpgsqlCommand(NotificationQueries.DeleteNotificationQuery, _connection);
-            command.Parameters.AddWithValue("@key", key);
             try
             {
-                _connection.Open();
-                int rows = command.ExecuteNonQuery();
-                if (rows > 0)
+                var notification = _context.notifications.FirstOrDefault(n => n.Id == key);
+                if (notification != null)
                 {
-                    var deleted = new Notification();
-                    deleted.Id = key;
-                    return deleted;
+                    _context.notifications.Remove(notification);
+                    _context.SaveChanges();
+                    return notification;
                 }
                 return null;
             }
@@ -160,12 +104,6 @@ namespace NotificationApp.DALLibrary.Repositories
                 Console.WriteLine(ex.Message);
                 return null;
             }
-            finally
-            {
-                _connection?.Close();
-            }
         }
-
-
     }
 }

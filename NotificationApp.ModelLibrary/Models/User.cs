@@ -1,12 +1,23 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace NotificationApp.ModelLibrary.Models{
 
     // User Class
     public class User{
         public int UserId{get;set;}
         public string UserName{get;set;}
+
+        [MaxLength(10)]
+        [MinLength(10)]
         public string MobileNumber{get;set;}
+
+        [EmailAddress]
         public string EmailId{get;set;}
 
+        // Navigation Property
+        public ICollection<Notification> Notifications{get;set;}= new List<Notification>();
+
+        
         public User(){
             UserName=string.Empty;
             MobileNumber=string.Empty;

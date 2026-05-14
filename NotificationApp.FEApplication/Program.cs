@@ -15,11 +15,11 @@ namespace NotificationApp.FEApplication{
 
         INotificationService notificationService;
 
-        DbConnection dbConnection;
+        NotificationAppContext dbContext;
         public Program(){
-            dbConnection = new DbConnection();
-            userRepository = new UserRepository(dbConnection);
-            notificationRepository = new NotificationRepository(dbConnection);
+            dbContext = new NotificationAppContext();
+            userRepository = new UserRepository(dbContext);
+            notificationRepository = new NotificationRepository(dbContext);
             userInteract = new UserService(userRepository);
             userApp = new UserApp(userInteract);
             notificationService = new NotificationService(userInteract, notificationRepository);

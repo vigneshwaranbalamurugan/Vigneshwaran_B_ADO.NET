@@ -3,10 +3,10 @@ using NotificationApp.DALLibrary.Interfaces;
 
 namespace NotificationApp.DALLibrary.Repositories{
     public abstract class AbstractRepository<K,T>: IRepository<K,T> where T : class{
-        protected readonly  DbConnection _connection;
+        protected readonly NotificationAppContext _context;
 
-        protected AbstractRepository(DbConnection connection){
-            _connection = connection;
+        protected AbstractRepository(NotificationAppContext context){
+            _context = context;
         }
 
         public abstract T Create(T item);
